@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jack Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .chat-container {
+            width: 400px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            padding: 15px;
+            background-color: #007bff;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .chat-window {
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            flex: 1;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin: 10px 0;
+        }
+        .message.user {
+            text-align: right;
+        }
+        .message .name {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .chat-footer {
+            display: flex;
+            border-top: 1px solid #ddd;
+            flex-direction: column;
+        }
+        .chat-footer input {
+            padding: 10px;
+            border: none;
+            border-radius: 0 0 0 8px;
+            margin-bottom: 5px;
+        }
+        .chat-footer button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 0 0 8px 0;
+            cursor: pointer;
+        }
+        .auth-container, .room-container {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .auth-container input, .room-container input {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .auth-container button, .room-container button {
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container" id="chat-container">
+        <div class="chat-header" id="chat-header">
+            Secure Chat Interface
+        </div>
+        <div class="chat-window" id="chat-window">
+            <!-- Chat messages will appear here -->
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="message-input" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <div class="auth-container" id="auth-container">
+        <h3 id="auth-title">Register</h3>
+        <input type="text" id="auth-name" placeholder="Enter your name">
+        <input type="password" id="auth-password" placeholder="Enter your password">
+        <button onclick="authenticate()">Submit</button>
+        <button onclick="toggleAuth()">Switch to Login</button>
+    </div>
+
+    <div class="room-container" id="room-container" style="display:none;">
+        <h3>Select or Create a Room</h3>
+        <input type="text" id="room-input" placeholder="Enter room name">
+        <button onclick="selectRoom()">Enter Room</button>
+    </div>
+
+    <script>
+        let registeredUsers = JSON.parse(localStorage.getItem('registeredUsers')) || {};
+        let currentUser = null;
+        let currentRoom = null;
+
+        // Function to toggle between login and registration
+        function toggleAuth() {
+            const authTitle = document.getElementById('auth-title');
+            const isRegistering = authTitle.textContent === 'Register';
+            authTitle.textContent = isRegistering ? 'Login' : 'Register';
+        }
+
+        // Function to authenticate the user
+        function authenticate() {
+            const name = document.getElementById('auth-name').value.trim();
+            const password = document.getElementById('auth-password').value.trim();
+            const authTitle = document.getElementById('auth-title').textContent;
+
+            if (name && password) {
+                if (authTitle === 'Register') {
+                    if (registeredUsers[name]) {
+                        alert('This name is already taken. Please choose another.');
+                    } else {
+                        registeredUsers[name] = password;
+                        localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
+                        alert('Registration successful! You can now log in.');
+                        toggleAuth();
+                    }
+                } else {
+                    if (registeredUsers[name] && registeredUsers[name] === password) {
+                        currentUser = name;
+                        document.getElementById('auth-container').style.display = 'none';
+                        document.getElementById('room-container').style.display = 'flex';
+                    } else {
+                        alert('Incorrect name or password.');
+                    }
+                }
+            } else {
+                alert('Please enter both a name and a password.');
+            }
+        }
+
+        // Function to select or create a room
+        function selectRoom() {
+            const roomInput = document.getElementById('room-input').value.trim();
+            if (roomInput) {
+                currentRoom = roomInput;
+                document.getElementById('room-container').style.display = 'none';
+                document.getElementById('chat-container').style.display = 'flex';
+                document.getElementById('chat-header').textContent = `Room: ${currentRoom}`;
+                loadMessages();
+            } else {
+                alert('Please enter a room name.');
+            }
+        }
+
+        // Function to load messages from local storage
+        function loadMessages() {
+            const chatWindow = document.getElementById('chat-window');
+            const roomMessages = JSON.parse(localStorage.getItem(currentRoom)) || [];
+
+            chatWindow.innerHTML = ''; // Clear previous messages
+
+            roomMessages.forEach(msg => {
+                const message = document.createElement('div');
+                message.className = 'message user';
+                message.innerHTML = `<span class="name">${msg.name}:</span> ${msg.text}`;
+                chatWindow.appendChild(message);
+            });
+
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Function to send a message
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const chatWindow = document.getElementById('chat-window');
+
+            if (currentUser && currentRoom && messageInput.value.trim() !== "") {
+                const message = document.createElement('div');
+                message.className = 'message user';
+                message.innerHTML = `<span class="name">${currentUser}:</span> ${messageInput.value}`;
+                
+                chatWindow.appendChild(message);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+
+                // Save message to local storage
+                saveMessage(currentUser, messageInput.value);
+
+                messageInput.value = '';
+            } else {
+                alert("Please enter a message.");
+            }
+        }
+
+        // Function to save a message to local storage
+        function saveMessage(name, text) {
+            const roomMessages = JSON.parse(localStorage.getItem(currentRoom)) || [];
+            roomMessages.push({ name, text });
+            localStorage.setItem(currentRoom, JSON.stringify(roomMessages));
+        }
+
+        // Show the authentication form initially
+        document.getElementById('chat-container').style.display = 'none';
+    </script>
+</body>
+</html>
